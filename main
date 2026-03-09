@@ -1,0 +1,75 @@
+# -*- coding: utf-8 -*-
+
+from telethon import TelegramClient, events
+import asyncio
+import time
+
+# Настройки
+API_ID = "29829466"
+API_HASH = "c95497b8e5c18c8c65ea53ee29320ba9"
+TARGET_USERNAME = "@aleksandr_dfix"
+KEYWORDS = [
+    "звукорежиссёр", "звукорежиссер", "звукорежиссура",
+    "саунд-дизайн", "саунддизайн", "звуковой дизайн", "композитор",
+    "музыка к видео", "озвучка", "дубляж", "закадровый", "чистка звука",
+    "шумоподавление", "сведение", "мастеринг", "микширование", "звукомонтаж",
+    "постпродакшн", "Foley", "синхронизация звука"
+]
+
+# Создаем клиент
+client = TelegramClient("session_name", API_ID, API_HASH)
+
+# Обработчик новых сообщений
+@client.on(events.NewMessage())
+async def handler(event):
+    await asyncio.sleep(0.1)  # Добавляем задержку
+    message = event.message
+    if not message or not message.text:
+        return
+
+    # Игнорируем сообщения, которые старше 5 минут
+    if time.time() - message.date.timestamp() > 300:
+        return
+
+    # Проверяем, содержит ли сообщение ключевые слова
+    for keyword in KEYWORDS:
+        if keyword.lower() in message.text.lower():
+            try:
+                # Получаем информацию о чате
+                chat = await event.get_chat()
+                if hasattr(chat, 'username') and chat.username:
+                    # Формируем ссылку для публичных чатов/каналов
+                    link = f"https://t.me/{chat.username}/{message.id}"
+                else:
+                    # Формируем ссылку для приватных чатов/каналов
+                    chat_id = chat.id
+                    if chat_id < 0:  # Группы и каналы имеют отрицательные ID
+                        chat_id = str(chat_id)[4:]  # Убираем "-100" из ID
+                    link = f"https://t.me/c/{chat_id}/{message.id}"
+
+                print(f"Ссылка на сообщение: {link}")
+                # Пересылаем сообщение на целевой юзернейм
+                await client.send_message(
+                    TARGET_USERNAME,
+                    f"{message.text}\n\nСсылка на сообщение: {link}"
+                )
+                print(f"Переслано сообщение: {message.text}")
+            except Exception as e:
+                print(f"Ошибка при обработке сообщения: {e}")
+            break
+
+# Запуск клиента
+async def main():
+    try:
+        print("Клиент запущен...")
+        await client.start()
+        print("Бот запущен. Нажмите Ctrl+C для выхода.")
+        await client.run_until_disconnected()
+    except KeyboardInterrupt:
+        print("\nПрерывание работы бота...")
+    finally:
+        print("Завершение работы бота...")
+        await client.disconnect()
+
+if __name__ == "__main__":
+    asyncio.run(main())
